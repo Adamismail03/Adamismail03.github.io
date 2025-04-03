@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cat Facts</title>
+<style>
+  table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 5px;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<h1>Cat Facts</h1>
+<button id="loadFacts">Load Cat Facts</button>
+<table id="factsTable">
+  <tr>
+    <th>Fact ID</th>
+    <th>Fact</th>
+  </tr>
+</table>
+
+<h2>Cat Photo:</h2>
+<img id="catPhoto" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOs6NZfe4DsUL78wLGiNA-8wlKOmVGrMqdWA&s" alt="Cat" width="300">
+
+
+<script>
+function loadFacts() {
+  fetch('https://brianobruno.github.io/cats.json')
+    .then(response => response.json())
+    .then(apiData => {
+      const sortedFacts = apiData.facts.sort((a, b) => a.factId - b.factId);
+      const table = document.getElementById('factsTable');
+
+      
+      while (table.rows.length > 1) {
+        table.deleteRow(1);
+      }
+
+      sortedFacts.forEach(fact => {
+        const row = table.insertRow();
+        const cell1 = row.insertCell(0);
+        const cell2 = row.insertCell(1);
+        cell1.textContent = fact.factId;
+        cell2.textContent = fact.text;
+      });
+
+      
+      document.getElementById('catPhoto').src = apiData.catPhoto;
+    })
+    .catch(error => console.error('Error fetching cat facts:', error));
+}
+
+document.getElementById('loadFacts').addEventListener('click', loadFacts);
+</script>
+
+</body>
+</html>
