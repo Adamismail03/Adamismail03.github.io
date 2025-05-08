@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valorant Agents & Weapons</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background-color: #0e0e0e;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    h1, h2 { color: #f04e31; }
+    .card img { height: 150px; object-fit: contain; }
+    .tabs button {
+      background: none;
+      color: white;
+      border: none;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin: 0 10px;
+      cursor: pointer;
+    }
+    .tabs button.active {
+      color: #f04e31;
+      border-bottom: 2px solid #f04e31;
+    }
+    .hidden { display: none; }
+    .details { text-align: left; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Valorant Agent And Weapon Information</h1>
+  <div class="tabs mb-4">
+    <button id="agentTab" class="active" onclick="showTab('agents')">Agents</button>
+    <button id="weaponTab" onclick="showTab('weapons')">Weapons</button>
+  </div>
+
+  <!-- Agent Section -->
+  <div id="agentSection">
+    <h2>Agents</h2>
+    <input id="agentSearch" class="form-control mb-2" placeholder="Search Agent" oninput="updateAgents()" />
+    <select id="roleFilter" class="form-select mb-4" onchange="updateAgents()">
+      <option value="">Select Role</option>
+    </select>
+    <div id="agents" class="row g-4 justify-content-center"></div>
+  </div>
+
+  <!-- Weapon Section -->
+  <div id="weaponSection" class="hidden">
+    <h2>Weapons</h2>
+    <input id="weaponSearch" class="form-control mb-2" placeholder="Search Weapon" oninput="updateWeapons()" />
+    <select id="typeFilter" class="form-select mb-2" onchange="updateWeapons()">
+      <option value="all">All Types</option>
+    </select>
+    <select id="sortFilter" class="form-select mb-4" onchange="updateWeapons()">
+      <option value="">Sort By</option>
+      <option value="cost">Price</option>
+      <option value="fireRate">Fire Rate</option>
+      <option value="damage">Head Damage</option>
+    </select>
+    <div id="weapons" class="row g-4 justify-content-center"></div>
+  </div>
+
+  <script>
+    let allAgents = [];
+    let allWeapons = [];
+
+    function showTab(tab) {
+      document.getElementById("agentSection").classList.toggle("hidden", tab !== "agents");
+      document.getElementById("weaponSection").classList.toggle("hidden", tab !== "weapons");
+      document.getElementById("agentTab").classList.toggle("active", tab === "agents");
+      document.getElementById("weaponTab").classList.toggle("active", tab === "weapons");
+    }
+
+    // === AGENTS ===
+    fetch("https://valorant-api.com/v1/agents")
+      .then(res => res.json())
+      .then(data => {
+        allAgents = data.data.filter(agent => agent.isPlayableCharacter);
+
+        let roles = [];
+        allAgents.forEach(agent => {
+          if (agent.role && !roles.includes(agent.role.displayName)) {
+            roles.push(agent.role.displayName);
+          }
+        });
+
+        let roleFilter = document.getElementById("roleFilter");
+        roles.forEach(role => {
+          let option = document.createElement("option");
+          option.value = role;
+          option.textContent = role;
+          roleFilter.appendChild(option);
+        });
+
+        updateAgents();
+      });
+
+    function updateAgents() {
+      let role = document.getElementById("roleFilter").value.toLowerCase();
+      let search = document.getElementById("agentSearch").value.toLowerCase();
+      let container = document.getElementById("agents");
+      container.innerHTML = "";
+
+      allAgents.forEach(agent => {
+        let matchesRole = !role || (agent.role && agent.role.displayName.toLowerCase() === role);
+        let matchesSearch = agent.displayName.toLowerCase().includes(search);
+
+        if (matchesRole && matchesSearch) {
+          let abilities = "";
+          agent.abilities.forEach(ab => {
+            abilities += ab.displayName + ": " + (ab.description || "No info") + "<br>";
+          });
+
+          let cardCol = document.createElement("div");
+          cardCol.className = "col-md-4 col-lg-3";
+
+          cardCol.innerHTML = `
+            <div class="card bg-dark text-white h-100">
+              <img src="${agent.displayIcon}" class="card-img-top" alt="${agent.displayName}">
+              <div class="card-body">
+                <h5 class="card-title">${agent.displayName}</h5>
+                <p class="card-text">${agent.role ? agent.role.displayName : ""}</p>
+                <div class="details d-none">${agent.description || "No description"}<br><br><strong>Abilities:</strong><br>${abilities}</div>
+              </div>
+            </div>
+          `;
+
+          cardCol.querySelector(".card").onclick = function () {
+            let detail = this.querySelector(".details");
+            detail.classList.toggle("d-none");
+          };
+
+          container.appendChild(cardCol);
+        }
+      });
+    }
+
+    // === WEAPONS ===
+    fetch("https://valorant-api.com/v1/weapons")
+      .then(res => res.json())
+      .then(data => {
+        allWeapons = data.data;
+
+        let types = [];
+        allWeapons.forEach(w => {
+          if (w.shopData && !types.includes(w.shopData.category)) {
+            types.push(w.shopData.category);
+          }
+        });
+
+        let typeFilter = document.getElementById("typeFilter");
+        types.forEach(type => {
+          let option = document.createElement("option");
+          option.value = type;
+          option.textContent = type;
+          typeFilter.appendChild(option);
+        });
+
+        updateWeapons();
+      });
+
+    function updateWeapons() {
+      let type = document.getElementById("typeFilter").value;
+      let search = document.getElementById("weaponSearch").value.toLowerCase();
+      let sort = document.getElementById("sortFilter").value;
+      let container = document.getElementById("weapons");
+      container.innerHTML = "";
+
+      let filtered = allWeapons.filter(w => {
+        let matchType = !type || type === "all" || (w.shopData && w.shopData.category === type);
+        let matchSearch = w.displayName.toLowerCase().includes(search);
+        return matchType && matchSearch;
+      });
+
+      if (sort === "cost") {
+        filtered.sort((a, b) => ((a.shopData && a.shopData.cost) || 0) - ((b.shopData && b.shopData.cost) || 0));
+      } else if (sort === "fireRate") {
+        filtered.sort((a, b) => ((a.weaponStats && a.weaponStats.fireRate) || 0) - ((b.weaponStats && b.weaponStats.fireRate) || 0));
+      } else if (sort === "damage") {
+        filtered.sort((a, b) => {
+          let damageA = (a.weaponStats && a.weaponStats.damageRanges && a.weaponStats.damageRanges[0] && a.weaponStats.damageRanges[0].headDamage) || 0;
+          let damageB = (b.weaponStats && b.weaponStats.damageRanges && b.weaponStats.damageRanges[0] && b.weaponStats.damageRanges[0].headDamage) || 0;
+          return damageB - damageA;
+        });
+      }
+
+      filtered.forEach(w => {
+        let stats = w.weaponStats;
+        let dmg = (w.weaponStats && w.weaponStats.damageRanges && w.weaponStats.damageRanges[0]);
+
+        let cardCol = document.createElement("div");
+        cardCol.className = "col-md-4 col-lg-3";
+
+        cardCol.innerHTML = `
+          <div class="card bg-dark text-white h-100">
+            <img src="${w.displayIcon}" class="card-img-top" alt="${w.displayName}">
+            <div class="card-body">
+              <h5 class="card-title">${w.displayName}</h5>
+              <p class="card-text">${(w.shopData && w.shopData.category) || "No Category"}</p>
+              <div class="details d-none">
+                <strong>Price:</strong> ${(w.shopData && w.shopData.cost) || "N/A"}<br>
+                <strong>Fire Rate:</strong> ${(stats && stats.fireRate) || "N/A"}<br>
+                <strong>Reload:</strong> ${(stats && stats.reloadTimeSeconds) || "N/A"} sec<br>
+                <strong>Damage:</strong><br>
+                Head: ${(dmg && dmg.headDamage) || "N/A"}<br>
+                Body: ${(dmg && dmg.bodyDamage) || "N/A"}<br>
+                Legs: ${(dmg && dmg.legDamage) || "N/A"}
+              </div>
+            </div>
+          </div>
+        `;
+
+        cardCol.querySelector(".card").onclick = function () {
+          let detail = this.querySelector(".details");
+          detail.classList.toggle("d-none");
+        };
+
+        container.appendChild(cardCol);
+      });
+    }
+  </script>
+</body>
+</html>
